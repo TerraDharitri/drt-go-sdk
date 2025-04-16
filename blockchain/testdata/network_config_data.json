@@ -1,0 +1,22 @@
+{
+  "data": {
+    "config": {
+      "drt_chain_id": "1",
+      "drt_denomination": 18,
+      "drt_gas_per_data_byte": 1500,
+      "drt_latest_tag_software_version": "v1.1.0.0",
+      "drt_meta_consensus_group_size": 400,
+      "drt_min_gas_limit": 50000,
+      "drt_min_gas_price": 1000000000,
+      "drt_min_transaction_version": 1,
+      "drt_num_metachain_nodes": 400,
+      "drt_num_nodes_in_shard": 400,
+      "drt_num_shards_without_meta": 3,
+      "drt_round_duration": 6000,
+      "drt_shard_consensus_group_size": 63,
+      "drt_start_time": 1596117600
+    }
+  },
+  "error": "",
+  "code": "successful"
+}

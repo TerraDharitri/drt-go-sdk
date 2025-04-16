@@ -1,0 +1,17 @@
+{
+  "data":{
+    "metrics":{
+      "drt_current_round":187068,
+      "drt_epoch_number":12,
+      "drt_highest_final_nonce":21980319,
+      "drt_nonce":21980327,
+      "drt_nonce_at_epoch_start":172770,
+      "drt_nonces_passed_in_current_epoch":14253,
+      "drt_round_at_epoch_start":172814,
+      "drt_rounds_passed_in_current_epoch":14254,
+      "drt_rounds_per_epoch":14400
+    }
+  },
+  "error":"",
+  "code":"successful"
+}

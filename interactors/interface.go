@@ -1,0 +1,70 @@
+package interactors
+
+import (
+	"context"
+
+	"github.com/TerraDharitri/drt-go-chain-core/data/transaction"
+
+	"github.com/TerraDharitri/drt-go-sdk/core"
+	"github.com/TerraDharitri/drt-go-sdk/data"
+)
+
+// Proxy holds the primitive functions that the dharitri proxy engine supports & implements
+// dependency inversion: blockchain package is considered inner business logic, this package is considered "plugin"
+type Proxy interface {
+	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
+	GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error)
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+	IsInterfaceNil() bool
+}
+
+// TxBuilder defines the component able to build & sign a transaction
+type TxBuilder interface {
+	ApplyUserSignature(cryptoHolder core.CryptoComponentsHolder, tx *transaction.FrontendTransaction) error
+	ApplyGuardianSignature(cryptoHolderGuardian core.CryptoComponentsHolder, tx *transaction.FrontendTransaction) error
+	ApplyRelayerSignature(relayerCryptoHolder core.CryptoComponentsHolder, tx *transaction.FrontendTransaction) error
+	IsInterfaceNil() bool
+}
+
+// AddressNonceHandler defines the component able to handler address nonces
+type AddressNonceHandler interface {
+	ApplyNonceAndGasPrice(ctx context.Context, tx *transaction.FrontendTransaction) error
+	ReSendTransactionsIfRequired(ctx context.Context) error
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	DropTransactions()
+	IsInterfaceNil() bool
+}
+
+// AddressNonceHandlerV3 defines the component able to handler address nonces
+type AddressNonceHandlerV3 interface {
+	ApplyNonceAndGasPrice(ctx context.Context, tx ...*transaction.FrontendTransaction) error
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	IsInterfaceNil() bool
+	Close()
+}
+
+// TransactionNonceHandlerV1 defines the component able to manage transaction nonces
+type TransactionNonceHandlerV1 interface {
+	GetNonce(ctx context.Context, address core.AddressHandler) (uint64, error)
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	ForceNonceReFetch(address core.AddressHandler) error
+	Close() error
+	IsInterfaceNil() bool
+}
+
+// TransactionNonceHandlerV2 defines the component able to apply nonce for a given frontend transaction.
+type TransactionNonceHandlerV2 interface {
+	ApplyNonceAndGasPrice(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	Close() error
+	IsInterfaceNil() bool
+}
+
+// TransactionNonceHandlerV3 defines the component able to apply nonce for a given frontend transaction.
+type TransactionNonceHandlerV3 interface {
+	ApplyNonceAndGasPrice(ctx context.Context, tx ...*transaction.FrontendTransaction) error
+	SendTransactions(ctx context.Context, txs ...*transaction.FrontendTransaction) ([]string, error)
+	Close()
+	IsInterfaceNil() bool
+}
