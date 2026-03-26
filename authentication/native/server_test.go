@@ -13,6 +13,7 @@ import (
 	crypto "github.com/TerraDharitri/drt-go-chain-crypto"
 	genesisMock "github.com/TerraDharitri/drt-go-chain/genesis/mock"
 	"github.com/TerraDharitri/drt-go-chain/testscommon"
+	"github.com/TerraDharitri/drt-go-chain/testscommon/cache"
 	"github.com/TerraDharitri/drt-go-sdk/authentication"
 	"github.com/TerraDharitri/drt-go-sdk/authentication/native/mock"
 	"github.com/TerraDharitri/drt-go-sdk/data"
@@ -102,7 +103,7 @@ func TestNativeserver_Validate(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsNativeAuthServer()
-		args.TimestampsCacher = &testscommon.CacherStub{
+		args.TimestampsCacher = &cache.CacherStub{
 			GetCalled: func(key []byte) (value interface{}, ok bool) {
 				assert.Equal(t, []byte(providedBlockHash), key)
 				return "invalid value", true
@@ -339,7 +340,7 @@ func TestNativeserver_Validate(t *testing.T) {
 				return nil
 			},
 		}
-		args.TimestampsCacher = &testscommon.CacherStub{
+		args.TimestampsCacher = &cache.CacherStub{
 			GetCalled: func(key []byte) (value interface{}, ok bool) {
 				assert.Equal(t, []byte(providedBlockHash), key)
 				return blockTimestamp, true
@@ -365,6 +366,7 @@ func createMockArgsNativeAuthServer() ArgsNativeAuthServer {
 		Signer:            &testsCommon.SignerStub{},
 		PubKeyConverter:   &testscommon.PubkeyConverterStub{},
 		KeyGenerator:      &genesisMock.KeyGeneratorStub{},
-		TimestampsCacher:  &testscommon.CacherStub{},
+		TimestampsCacher:  &cache.CacherStub{},
+		
 	}
 }

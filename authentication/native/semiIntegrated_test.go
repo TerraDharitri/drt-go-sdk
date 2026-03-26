@@ -10,7 +10,7 @@ import (
 	"github.com/TerraDharitri/drt-go-chain-core/core/pubkeyConverter"
 	"github.com/TerraDharitri/drt-go-chain-crypto/signing"
 	"github.com/TerraDharitri/drt-go-chain-crypto/signing/ed25519"
-	"github.com/TerraDharitri/drt-go-chain/testscommon"
+	"github.com/TerraDharitri/drt-go-chain/testscommon/cache"
 	"github.com/TerraDharitri/drt-go-sdk/authentication"
 	"github.com/TerraDharitri/drt-go-sdk/blockchain/cryptoProvider"
 	"github.com/TerraDharitri/drt-go-sdk/data"
@@ -88,7 +88,7 @@ func createNativeServer(httpClientWrapper authentication.HttpClientWrapper, toke
 		Signer:            &testsCommon.SignerStub{},
 		PubKeyConverter:   converter,
 		KeyGenerator:      keyGen,
-		TimestampsCacher:  testscommon.NewCacherMock(),
+		TimestampsCacher:  cache.NewCacherMock(),
 	}
 	server, _ := NewNativeAuthServer(serverArgs)
 

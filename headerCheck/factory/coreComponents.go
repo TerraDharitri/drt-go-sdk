@@ -10,9 +10,12 @@ import (
 	"github.com/TerraDharitri/drt-go-sdk/data"
 	"github.com/TerraDharitri/drt-go-sdk/disabled"
 	"github.com/TerraDharitri/drt-go-chain/common"
+	"github.com/TerraDharitri/drt-go-chain/common/chainparametersnotifier"
 	"github.com/TerraDharitri/drt-go-chain/common/enablers"
 	"github.com/TerraDharitri/drt-go-chain/config"
+	"github.com/TerraDharitri/drt-go-chain/epochStart/notifier"
 	"github.com/TerraDharitri/drt-go-chain/process/rating"
+	"github.com/TerraDharitri/drt-go-chain/sharding"
 	"github.com/TerraDharitri/drt-go-chain/sharding/nodesCoordinator"
 )
 
@@ -23,11 +26,12 @@ const (
 )
 
 type coreComponents struct {
-	Marshaller          marshal.Marshalizer
-	Hasher              hashing.Hasher
-	Rater               nodesCoordinator.ChanceComputer
-	PubKeyConverter     core.PubkeyConverter
-	EnableEpochsHandler common.EnableEpochsHandler
+	Marshaller            marshal.Marshalizer
+	Hasher                hashing.Hasher
+	Rater                 nodesCoordinator.ChanceComputer
+	PubKeyConverter       core.PubkeyConverter
+	EnableEpochsHandler   common.EnableEpochsHandler
+	ChainParametersHolder nodesCoordinator.ChainParametersHandler
 }
 
 // CreateCoreComponents creates core components needed for header verification
@@ -46,7 +50,17 @@ func CreateCoreComponents(
 		return nil, err
 	}
 
-	rater, err := createRater(ratingsConfig, networkConfig)
+	enableEpochsHandler, err := enablers.NewEnableEpochsHandler(enableEpochsConfig.EnableEpochs, &disabled.EpochNotifier{})
+	if err != nil {
+		return nil, err
+	}
+
+	chainParams, err := createChainParams(networkConfig, enableEpochsHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	rater, err := createRater(ratingsConfig, networkConfig, chainParams)
 	if err != nil {
 		return nil, err
 	}
@@ -56,30 +70,48 @@ func CreateCoreComponents(
 		return nil, err
 	}
 
-	enableEpochsHandler, err := enablers.NewEnableEpochsHandler(enableEpochsConfig.EnableEpochs, &disabled.EpochNotifier{})
-	if err != nil {
-		return nil, err
-	}
-
 	return &coreComponents{
-		Marshaller:          marshalizer,
-		Hasher:              hasher,
-		Rater:               rater,
-		PubKeyConverter:     converter,
-		EnableEpochsHandler: enableEpochsHandler,
+		Marshaller:            marshalizer,
+		Hasher:                hasher,
+		Rater:                 rater,
+		PubKeyConverter:       converter,
+		EnableEpochsHandler:   enableEpochsHandler,
+		ChainParametersHolder: chainParams,
 	}, nil
 }
 
-func createRater(rc *data.RatingsConfig, nc *data.NetworkConfig) (nodesCoordinator.ChanceComputer, error) {
+func createChainParams(nc *data.NetworkConfig, enableEpochsHandler common.EnableEpochsHandler) (nodesCoordinator.ChainParametersHandler, error) {
+	epochStartHandlerWithConfirm := notifier.NewEpochStartSubscriptionHandler()
+	chainParametersNotifier := chainparametersnotifier.NewChainParametersNotifier()
+
+	chainParams := []config.ChainParametersByEpochConfig{
+		{
+			RoundDuration:               uint64(nc.RoundDuration),
+			Hysteresis:                  nc.Hysteresys,
+			EnableEpoch:                 enableEpochsHandler.GetActivationEpoch(common.AndromedaFlag),
+			ShardConsensusGroupSize:     uint32(nc.ShardConsensusGroupSize),
+			ShardMinNumNodes:            nc.NumNodesInShard,
+			MetachainConsensusGroupSize: nc.MetaConsensusGroup,
+			MetachainMinNumNodes:        nc.NumMetachainNodes,
+			Adaptivity:                  nc.Adaptivity,
+		},
+	}
+	args := sharding.ArgsChainParametersHolder{
+		EpochStartEventNotifier: epochStartHandlerWithConfirm,
+		ChainParameters:         chainParams,
+		ChainParametersNotifier: chainParametersNotifier,
+	}
+	return sharding.NewChainParametersHolder(args)
+}
+
+func createRater(rc *data.RatingsConfig, nc *data.NetworkConfig, chainParamsHolder nodesCoordinator.ChainParametersHandler) (nodesCoordinator.ChanceComputer, error) {
 	ratingsConfig := createRatingsConfig(rc)
 
 	ratingDataArgs := rating.RatingsDataArg{
-		Config:                   ratingsConfig,
-		ShardConsensusSize:       uint32(nc.ShardConsensusGroupSize),
-		MetaConsensusSize:        nc.MetaConsensusGroup,
-		ShardMinNodes:            nc.NumNodesInShard,
-		MetaMinNodes:             nc.NumMetachainNodes,
-		RoundDurationMiliseconds: uint64(nc.RoundDuration),
+		Config:                    ratingsConfig,
+		EpochNotifier:             &disabled.EpochNotifier{},
+		ChainParametersHolder:     chainParamsHolder,
+		RoundDurationMilliseconds: uint64(nc.RoundDuration),
 	}
 
 	ratingsData, err := rating.NewRatingsData(ratingDataArgs)
@@ -114,22 +146,26 @@ func createRatingsConfig(rd *data.RatingsConfig) config.RatingsConfig {
 	}
 
 	shardChain := config.ShardChain{
-		RatingSteps: config.RatingSteps{
-			HoursToMaxRatingFromStartRating: rd.ShardchainHoursToMaxRatingFromStartRating,
-			ProposerValidatorImportance:     rd.ShardchainProposerValidatorImportance,
-			ProposerDecreaseFactor:          rd.ShardchainProposerDecreaseFactor,
-			ValidatorDecreaseFactor:         rd.ShardchainValidatorDecreaseFactor,
-			ConsecutiveMissedBlocksPenalty:  rd.ShardchainConsecutiveMissedBlocksPenalty,
+			RatingStepsByEpoch: []config.RatingSteps{
+			{
+				HoursToMaxRatingFromStartRating: rd.ShardchainHoursToMaxRatingFromStartRating,
+				ProposerValidatorImportance:     rd.ShardchainProposerValidatorImportance,
+				ProposerDecreaseFactor:          rd.ShardchainProposerDecreaseFactor,
+				ValidatorDecreaseFactor:         rd.ShardchainValidatorDecreaseFactor,
+				ConsecutiveMissedBlocksPenalty:  rd.ShardchainConsecutiveMissedBlocksPenalty,
+			},
 		},
 	}
 
 	metaChain := config.MetaChain{
-		RatingSteps: config.RatingSteps{
-			HoursToMaxRatingFromStartRating: rd.MetachainHoursToMaxRatingFromStartRating,
-			ProposerValidatorImportance:     rd.MetachainProposerValidatorImportance,
-			ProposerDecreaseFactor:          rd.MetachainProposerDecreaseFactor,
-			ValidatorDecreaseFactor:         rd.MetachainValidatorDecreaseFactor,
-			ConsecutiveMissedBlocksPenalty:  rd.MetachainConsecutiveMissedBlocksPenalty,
+			RatingStepsByEpoch: []config.RatingSteps{
+			{
+				HoursToMaxRatingFromStartRating: rd.MetachainHoursToMaxRatingFromStartRating,
+				ProposerValidatorImportance:     rd.MetachainProposerValidatorImportance,
+				ProposerDecreaseFactor:          rd.MetachainProposerDecreaseFactor,
+				ValidatorDecreaseFactor:         rd.MetachainValidatorDecreaseFactor,
+				ConsecutiveMissedBlocksPenalty:  rd.MetachainConsecutiveMissedBlocksPenalty,
+			},
 		},
 	}
 

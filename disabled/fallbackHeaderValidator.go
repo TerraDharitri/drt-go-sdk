@@ -8,6 +8,11 @@ import (
 type FallBackHeaderValidator struct {
 }
 
+// ShouldApplyFallbackValidationForHeaderWith returns false
+func (fhvs *FallBackHeaderValidator) ShouldApplyFallbackValidationForHeaderWith(_ uint32, _ bool, _ uint64, _ []byte) bool {
+	return false
+}
+
 // ShouldApplyFallbackValidation returns false
 func (fhvs *FallBackHeaderValidator) ShouldApplyFallbackValidation(_ data.HeaderHandler) bool {
 	return false

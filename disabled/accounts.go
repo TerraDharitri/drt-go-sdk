@@ -138,6 +138,10 @@ func (a *Accounts) GetAccountFromBytes(_ []byte, _ []byte) (vmcommon.AccountHand
 	return nil, nil
 }
 
+// SetTxHashForLatestStateAccesses does nothing
+func (a *Accounts) SetTxHashForLatestStateAccesses(_ []byte) {
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (a *Accounts) IsInterfaceNil() bool {
 	return a == nil

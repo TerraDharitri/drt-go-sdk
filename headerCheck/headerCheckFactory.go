@@ -4,6 +4,9 @@ import (
 	"context"
 
 	"github.com/TerraDharitri/drt-go-chain-core/core/check"
+	"github.com/TerraDharitri/drt-go-chain/config"
+	"github.com/TerraDharitri/drt-go-chain/dataRetriever/dataPool/headersCache"
+	proofscache "github.com/TerraDharitri/drt-go-chain/dataRetriever/dataPool/proofsCache"
 	"github.com/TerraDharitri/drt-go-sdk/data"
 	"github.com/TerraDharitri/drt-go-sdk/disabled"
 	"github.com/TerraDharitri/drt-go-sdk/headerCheck/factory"
@@ -65,10 +68,21 @@ func NewHeaderCheckHandler(
 		enableEpochsConfig,
 		cryptoComp.PublicKey,
 		genesisNodesConfig,
+    	coreComp.ChainParametersHolder,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	headersPool, err := headersCache.NewHeadersPool(config.HeadersPoolConfig{
+		MaxHeadersPerShard:            1000,
+		NumElementsToRemoveOnEviction: 100,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	proofsPool := proofscache.NewProofsPool(3, 1000)
 
 	headerSigArgs := &headerCheck.ArgsHeaderSigVerifier{
 		Marshalizer:             coreComp.Marshaller,
@@ -78,6 +92,10 @@ func NewHeaderCheckHandler(
 		SingleSigVerifier:       cryptoComp.SingleSig,
 		KeyGen:                  cryptoComp.KeyGen,
 		FallbackHeaderValidator: &disabled.FallBackHeaderValidator{},
+		EnableEpochsHandler:     coreComp.EnableEpochsHandler,
+		HeadersPool:             headersPool,
+		ProofsPool:              proofsPool,
+		StorageService:          &disabled.StorageService{},
 	}
 	headerSigVerifier, err := headerCheck.NewHeaderSigVerifier(headerSigArgs)
 	if err != nil {

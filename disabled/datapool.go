@@ -84,6 +84,12 @@ func (dp *DataPool) ValidatorsInfo() dataRetriever.ShardedDataCacherNotifier {
 	return nil
 }
 
+
+// Proofs returns nil
+func (dp *DataPool) Proofs() dataRetriever.ProofsPool {
+	return nil
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (dp *DataPool) IsInterfaceNil() bool {
 	return dp == nil

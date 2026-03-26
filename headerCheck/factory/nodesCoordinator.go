@@ -23,6 +23,7 @@ func CreateNodesCoordinator(
 	enableEpochsConfig *data.EnableEpochsConfig,
 	publicKey crypto.PublicKey,
 	genesisNodesConfig *data.GenesisNodes,
+	chainParams nodesCoordinator.ChainParametersHandler,
 ) (nodesCoordinator.EpochsConfigUpdateHandler, error) {
 	eligibleValidators, err := generateGenesisNodes(coreComp.PubKeyConverter, genesisNodesConfig.Eligible)
 	if err != nil {
@@ -34,7 +35,7 @@ func CreateNodesCoordinator(
 		return nil, err
 	}
 
-	argsNodesShuffler := createArgsNodesShuffler(enableEpochsConfig, networkConfig, coreComp.EnableEpochsHandler)
+	argsNodesShuffler := createArgsNodesShuffler(enableEpochsConfig, coreComp.EnableEpochsHandler)
 	nodeShuffler, err := nodesCoordinator.NewHashValidatorsShuffler(argsNodesShuffler)
 	if err != nil {
 		return nil, err
@@ -47,27 +48,29 @@ func CreateNodesCoordinator(
 
 	initialEpoch := uint32(0)
 	arguments := nodesCoordinator.ArgNodesCoordinator{
-		ShardConsensusGroupSize: int(networkConfig.ShardConsensusGroupSize),
-		MetaConsensusGroupSize:  int(networkConfig.MetaConsensusGroup),
-		Marshalizer:             coreComp.Marshaller,
-		Hasher:                  coreComp.Hasher,
-		Shuffler:                nodeShuffler,
-		EpochStartNotifier:      &disabled.EpochStartNotifier{},
-		BootStorer:              &disabled.Storer{},
-		ShardIDAsObserver:       0,
-		NbShards:                networkConfig.NumShardsWithoutMeta,
-		EligibleNodes:           eligibleValidators,
-		WaitingNodes:            waitingValidators,
-		SelfPublicKey:           publicKeyBytes,
-		Epoch:                   initialEpoch,
-		StartEpoch:              0,
-		ConsensusGroupCache:     &disabled.Cache{},
-		ShuffledOutHandler:      &disabled.ShuffledOutHandler{},
-		ChanStopNode:            make(chan endProcess.ArgEndProcess),
-		NodeTypeProvider:        &disabled.NodeTypeProvider{},
-		IsFullArchive:           false,
-		EnableEpochsHandler:     coreComp.EnableEpochsHandler,
-		ValidatorInfoCacher:     dataPool.NewCurrentEpochValidatorInfoPool(),
+		
+		ChainParametersHandler:          chainParams,
+		GenesisNodesSetupHandler:        &disabled.GenesisNodesSetupHandler{},
+		NodesCoordinatorRegistryFactory: &disabled.NodesCoordinatorRegistryFactory{},
+		Marshalizer:                     coreComp.Marshaller,
+		Hasher:                          coreComp.Hasher,
+		Shuffler:                        nodeShuffler,
+		EpochStartNotifier:              &disabled.EpochStartNotifier{},
+		BootStorer:                      &disabled.Storer{},
+		ShardIDAsObserver:               0,
+		NbShards:                        networkConfig.NumShardsWithoutMeta,
+		EligibleNodes:                   eligibleValidators,
+		WaitingNodes:                    waitingValidators,
+		SelfPublicKey:                   publicKeyBytes,
+		Epoch:                           initialEpoch,
+		StartEpoch:                      0,
+		ConsensusGroupCache:             &disabled.Cache{},
+		ShuffledOutHandler:              &disabled.ShuffledOutHandler{},
+		ChanStopNode:                    make(chan endProcess.ArgEndProcess),
+		NodeTypeProvider:                &disabled.NodeTypeProvider{},
+		IsFullArchive:                   false,
+		EnableEpochsHandler:             coreComp.EnableEpochsHandler,
+		ValidatorInfoCacher:             dataPool.NewCurrentEpochValidatorInfoPool(),
 	}
 
 	baseNodesCoordinator, err := nodesCoordinator.NewIndexHashedNodesCoordinator(arguments)
@@ -109,7 +112,6 @@ func generateGenesisNodes(converter core.PubkeyConverter, nodesConfig map[uint32
 
 func createArgsNodesShuffler(
 	eec *data.EnableEpochsConfig,
-	networkConfig *data.NetworkConfig,
 	enableEpochsHandler common.EnableEpochsHandler,
 ) *nodesCoordinator.NodesShufflerArgs {
 	maxNodesChangeConfigs := make([]config.MaxNodesChangeConfig, 0)
@@ -124,13 +126,11 @@ func createArgsNodesShuffler(
 	}
 
 	argsNodesShuffler := &nodesCoordinator.NodesShufflerArgs{
-		NodesShard:           networkConfig.NumNodesInShard,
-		NodesMeta:            networkConfig.NumMetachainNodes,
-		Hysteresis:           networkConfig.Hysteresys,
-		Adaptivity:           networkConfig.Adaptivity,
+
 		ShuffleBetweenShards: true,
 		MaxNodesEnableConfig: maxNodesChangeConfigs,
 		EnableEpochsHandler:  enableEpochsHandler,
+		EnableEpochs:         eec.EnableEpochs,
 	}
 
 	return argsNodesShuffler
