@@ -63,7 +63,7 @@ jobs:
       - name: Save artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: artifacts
+          name: artifacts-${{ matrix.os }}
           path: |
             libbls.so
             libbls.dylib
