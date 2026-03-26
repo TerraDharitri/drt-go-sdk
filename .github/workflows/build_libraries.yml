@@ -71,10 +71,9 @@ jobs:
           if-no-files-found: error
 
   attach-on-release:
-      if: github.event_name == 'release' || github.event_name == 'push'
-      needs: [build]
-      runs-on: ubuntu-latest
-      steps:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
       - name: Check out code
         uses: actions/checkout@v4
         with:
@@ -89,18 +88,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG=${{ github.ref_name }}
-
-          # For push events, use a test tag
-          if [ "${{ github.event_name }}" = "push" ]; then
-            TAG="test-release"
-          fi
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="test-release"
-          fi
-
-          echo "Using tag: $TAG"
-
-          gh release create $TAG || true
-          gh release upload $TAG $(find ./artifacts -type f)
+          gh release upload ${{ github.ref_name }} $(find ./artifacts -type f)
